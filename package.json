@@ -1,0 +1,21 @@
+{
+  "name": "pando",
+  "version": "0.0.0",
+  "description": "A functional reactive programming library for javascript",
+  "main": "js/pando.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/matthew-hilty/Pando.git"
+  },
+  "keywords": [
+    "pando",
+    "pando.js",
+    "frp",
+    "functional",
+    "reactive",
+    "programming",
+    "bacon"
+  ],
+  "author": "Matthew Hilty",
+  "license": "ISC",
+}
