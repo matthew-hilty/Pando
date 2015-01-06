@@ -1,0 +1,23 @@
+{ isCell }   = require './cell-utilities'
+{ postpone } = require './constants'
+
+anyPostponement = \args ->
+  args.some isPostponed
+
+equalsPostpone = \value ->
+  value == postpone
+
+hasPostpone = \value ->
+  isCell value && isPostponed (value.read ())
+
+isPostponed = \value ->
+  equalsPostpone value || hasPostpone value
+
+writePostpone = \cell ->
+  cell.write postpone
+
+module.exports = {
+  anyPostponement
+  isPostponed
+  writePostpone
+}

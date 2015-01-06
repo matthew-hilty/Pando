@@ -1,0 +1,127 @@
+{ isInitiatingDagUpdate, resetDagUpdateProcess } = require './dag-status'
+
+{ callOnlyOnce, eachProperty, extendProto, identity, noOp, returnNoOp } =
+  require './utilities'
+
+{ anyPostponement }      = require './postponement-utilities'
+{ configReschedule }     = require './configure-rescheduling'
+{ CoreDispatcher }       = require './core-types'
+{ cytolyse }             = require './cell-utilities'
+{ generateID, register } = require './registrations'
+{ isEnd }                = require './constant-comparisons'
+parseOpts                = require './parseOpts'
+
+createDispatcherType = \opts \source ->
+  dispatcher = _createDispatcherType opts source
+  register dispatcher
+  dispatcher
+
+# Later, refactor to use mediator more; & add a method for adding pending srcs.
+# Improve memory efficiency. Many of these methods should be shared.
+# Many of these internal functions can be moved outside of
+# the `_createDispatcherType` function.
+# (This library should be distributed across several modular files
+# for greater maintainability.)
+# Perhaps memory shouldn't be a determining factor.
+_createDispatcherType = \opts \source ->
+  { mixins, proto, transformDispatch, transformSubscribe } = parseOpts opts
+
+  mixins              ?= {}
+  proto               ?= CoreDispatcher
+  source              ?= returnNoOp
+  transformDispatch   ?= identity
+  transformSubscribe  ?= identity
+
+  id                 = generateID ()
+  sinks              = {}
+  stopSourceInflux   = noOp
+  terminated?        = false
+
+  alias = id
+  setAlias = \val -> alias = val # Does NOT reset alias.
+
+  activate = callOnlyOnce ->
+    # Dispatching `callOnlyOnce` on `(source dispatch)`
+    # might be unnecessary, since `callOnlyOnce` has been
+    # included in the function `_subscribe`.
+    stopSourceInflux = callOnlyOnce (source dispatch)
+  addSubscriber = \sink ->
+    #sink.id = generateID () unless sink.id
+    unless sink.id
+      sink.id = generateID ()
+    sinks[sink.id] = sink
+  disconnectFrom = (sourceID, sid) ->
+    subscriptionID = sid ?? id
+    transmit sourceID 'unsubscribe' subscriptionID if sourceID
+  _dispatch = (value, sourceID, subscriptionID) ->
+    dispatch_N (10, value, sourceID, subscriptionID)
+  dispatch_N = (N, value, sourceID, sid) ->
+    configReschedule (reschedulingConfig, N, value, sourceID, sid)
+  distribute = \value ->
+    if isEnd value
+      terminate ()
+    else
+      _distrib = \sink ->
+        sink (value, id, (sink.id || 'no-ID'))
+      eachProperty (_distrib, sinks)
+  informSubscribers = ->
+    # TODO: Refactor the following line.
+    eachProperty ((\sink -> sink end), sinks)
+  releaseFromRescheduling = (value, sourceID, sid) ->
+    if terminated?
+      disconnectFrom (sourceID, sid)
+    else
+      transact ((cytolyse value), sourceID, sid)
+  # Clobbered?
+  _subscribe = \sink ->
+    if terminated?
+      # TODO: Refactor the following line.
+      sink end
+      noOp
+    else
+      addSubscriber sink
+      activate ()
+      # The following should be callable only once,
+      # by either subscriber or dispatcher.
+      callOnlyOnce -> unsubscribe sink
+  terminate = ->
+    stopSourceInflux ()
+    terminated? = true
+    informSubscribers ()
+    sinks = {}
+    removeFromRegistrar id
+  transact = (value, sourceID, sid) ->
+    hasInitiatedDagUpdate = isInitiatingDagUpdate ()
+    try
+      distribute value
+      disconnectFrom (sourceID, sid) if terminated?
+    finally
+      resetDagUpdateProcess () if hasInitiatedDagUpdate
+  unsubscribe = \val ->
+    # Validating that `val` is of ID type is possibly necessary.
+    subscriberID = if isFunction val then val.id else val
+    delete sinks[subscriberID]
+    terminate () if isEmpty sinks
+
+  reschedulingConfig = { onRelease: releaseFromRescheduling }
+
+  dispatch  = transformDispatch _dispatch
+  subscribe = transformSubscribe (_subscribe, unsubscribe)
+
+  dispatch.id = id
+
+  properties = {
+    activate
+    alias
+    dispatch
+    id
+    setAlias
+    subscribe
+    terminate
+    unsubscribe }
+
+  # TODO: Perhaps `_createDispatcherType` can be unwrapped. Try the following:
+  # register (extendProto (proto, properties, mixins))
+  extendProto (proto, properties, mixins)
+
+module.exports = createDispatcherType

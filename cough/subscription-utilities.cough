@@ -1,0 +1,9 @@
+{ filteringNonterminal, permittingOnlyOneValue } = require './transforms'
+
+transubscribe = \transmerse \dispatcher \sink ->
+  dispatcher.subscribe (transmerse sink)
+
+onFirstAndOnlyValue = transubscribe permittingOnlyOneValue
+onValue             = transubscribe filteringNonterminal
+
+module.exports = { onFirstAndOnlyValue, onValue, transubscribe }

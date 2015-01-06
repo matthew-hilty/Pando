@@ -1,0 +1,17 @@
+{ CoreDispatcher }       = require './core-types'
+{ identity, isFunction } = require './utilities'
+
+parseOpts = \opts ->
+  if isFunction opts
+    transformDispatch = opts
+  else
+    { mixins, proto, transformDispatch, transformSubscribe } = opts
+
+  mixins             ?= {}
+  proto              ?= CoreDispatcher
+  transformDispatch  ?= identity
+  transformSubscribe ?= identity
+
+  { mixins, proto, transformDispatch, transformSubscribe }
+
+module.exports = parseOpts

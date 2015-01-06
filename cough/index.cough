@@ -1,0 +1,42 @@
+{ blockTillReady, doAsync }          = require './scheduling'
+connect                              = require './connect'
+createDispatcherType                 = require './createDispatcherType'
+factories                            = require './dispatcher-factories'
+{ isEnd, isNonTerminal, isRelevant } = require './constant-comparisons'
+sources                              = require './source-determiners'
+{ terminate }                        = require './transform-utilities'
+transforms                           = require './transforms'
+
+{
+  isDispatcher
+  isEventStream
+  isProperty
+} = require './dispatcher-comparisons'
+
+{
+  onFirstAndOnlyValue
+  onValue
+  transubscribe
+} = require './subscription-utilities'
+
+predicates = {
+  isDispatcher
+  isEnd
+  isEventStream
+  isNonTerminal
+  isProperty
+  isRelevant
+}
+
+utilities = {
+  blockTillReady
+  connect
+  createDispatcherType
+  doAsync
+  onFirstAndOnlyValue
+  onValue
+  terminate
+  transubscribe
+}
+
+module.exports = { factories, predicates, sources, transforms, utilities }

@@ -1,0 +1,83 @@
+{ generateID, register } = require './registrations'
+{ returnNoOp }           = require './utilities'
+
+fromArray = \array \sink ->
+  isAvailable = true
+  id          = generateID ()
+  index       = 0
+  length      = array.length
+  unsubscribe = -> isAvailable = false
+
+  register { id, unsubscribe }
+
+  while isAvailable
+    if index < length
+      sink (array[index++], id, "Array-#{id}")
+    else
+      sink (end, id, "Array-#{id}")
+
+  unsubscribe
+
+# WET.
+fromCallback = (useAsCallback, stopUsingAsCallback) -> (sink) ->
+  stopUsingAsCallback ?= returnNoOp
+  # Callbacks don't have a source ID.
+  _sink = \val ->
+    sink val
+    sink end
+  useAsCallback _sink
+  -> stopUsingAsCallback _sink
+
+fromDelayedValue = \value ->
+  fromFinitePeriodicSequence [value]
+
+fromDispatcher = \dispatcher ->
+  dispatcher.subscribe
+
+fromFinitePeriodicSequence = \values ->
+  index = 0
+  len = values.length
+  fromPoll (\sink ->
+    val = values[index]
+    index += 1
+    sink val
+    sink end if index == len
+  )
+
+fromEventTarget = \domTgt \eventName \sink ->
+  sub = domTgt.addEventListener ?? (domTgt.addListener ?? domTgt.bind)
+  unsub =
+    domTgt.removeEventListener ?? (domTgt.removeListener ?? domTgt.unbind)
+  sub.call (domTgt, eventName, sink)
+  -> unsub.call (domTgt, eventName)
+
+fromInternalDispatchOnly = returnNoOp
+
+fromMerger = \dispatchers \sink ->
+  subscriptions = []
+  dispatchers.forEach \dispatcher ->
+    subscriptions.push (dispatcher.subscribe sink)
+  -> subscriptions.forEach \unsubscribe -> unsubscribe ()
+
+fromPoll = \transformSink \delayDuration \sink ->
+  pollID = setInterval ((transformSink sink), delayDuration)
+  -> clearInterval pollID
+
+# TODO: Consider renaming parameters.
+fromSourceFunction = (subscribe, unsubscribe) -> (sink) ->
+  unsubscribe ?= returnNoOp
+  subscribe sink
+  -> unsubscribe sink
+
+module.exports = {
+  fromArray
+  fromCallback
+  fromDelayedValue
+  fromDispatcher
+  fromEventTarget
+  fromFinitePeriodicSequence
+  fromInternalDispatchOnly
+  fromMerger
+  fromPoll
+  fromSourceFunction
+} = require './source-determiners'

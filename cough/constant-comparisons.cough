@@ -1,0 +1,12 @@
+{ end, none, postpone } = require './constants'
+
+isEnd = \value ->
+  value == end
+
+isNonTerminal = \value ->
+  ! isEnd value
+
+isRelevant = \value ->
+  value != none
+
+module.exports = { isEnd, isNonTerminal, isRelevant }

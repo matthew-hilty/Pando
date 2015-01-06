@@ -1,0 +1,43 @@
+{ bind, getComponent, isArray, isFunction, isKeypath } = require './utilities'
+
+{ cytolyse, doAsync } = require './scheduling'
+{ end }               = require './constants'
+{ isCell }            = require './cell-utilities'
+{ isEnd }             = require './constant-comparisons'
+{ isPostponed }       = require './postponement-utilities'
+
+bindBeforeTransmersal = (transmerse) -> (fn) -> (args...) ->
+  transmerse (bind (doAsync fn) args...)
+
+bindIdentification = (sink, sourceID, sid) -> (val) ->
+  sink (val, sourceID, sid)
+
+functionize = (arg, args) ->
+  switch
+    when isFunction arg
+      if isArray args then bind arg args... else arg
+    when isKeypath arg
+      \val ->
+        component = getComponent (arg, val)
+        if isFunction component then component args... else component
+    when isCell arg
+      if isPostponed arg
+        msg = "The function 'functionize' cannot manage suspended cells."
+        throw new Error msg
+      else
+        (-> cytolyse arg)
+    else (-> arg)
+
+sinkIfSinkable = (sink) -> (value, isSinkable) ->
+  sink value if isSinkable
+
+terminate = \sink ->
+  sink end
+
+module.exports = {
+  bindBeforeTransmersal
+  bindIdentification
+  functionize
+  sinkIfSinkable
+  terminate
+}

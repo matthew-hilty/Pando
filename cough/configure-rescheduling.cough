@@ -1,0 +1,25 @@
+{ anyPostponedArgs, anyPostponement } = require './postponement-utilities'
+{ extend, noOp }                      = require './utilities'
+
+configReschedule = (_config, N, args...) ->
+  config = parseConfig _config
+  { onRelease, onReschedule, shouldReschedule } = config
+
+  if shouldReschedule args
+    onReschedule args...
+    reschedule (-> configReschedule (config, N - 1, args...)) if N > 0
+  else
+    onRelease args...
+  return args[0] # Should be `cell`.
+
+parseConfig = \config ->
+  extend ({}, defaultConfig, config)
+
+reschedule = \thunk ->
+  setTimeout (thunk, 0)
+
+defaultConfig =
+  onReschedule     : noOp
+  shouldReschedule : anyPostponement
+
+module.exports = { configReschedule, reschedule }

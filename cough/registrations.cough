@@ -1,0 +1,22 @@
+generateID = ->
+  seed++
+
+register = \entity ->
+  entities[entity.id] = entity
+  entity
+
+removeFromRegistrar = \id ->
+  delete entities[id]
+
+transmit = (id) -> (message) -> (args...) ->
+  entities[id][message] args... if entities[id]
+
+entities = {}
+seed     = 0
+
+module.exports = {
+  generateID
+  register
+  removeFromRegistrar
+  transmit
+}

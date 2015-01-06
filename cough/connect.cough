@@ -1,0 +1,18 @@
+{ generateID } = require './registrations'
+
+connect = (src, tgt, transform) ->
+  { dispatch } = tgt
+  transform ?= identity
+  newSink = transform dispatch
+
+  if newSink == dispatch
+    return src.subscribe newSink
+
+  subscription = (value, sourceID) ->
+    newSink (value, sourceID, subscription.id)
+
+  subscription.id = generateID ()
+
+  src.subscribe subscription
+
+module.exports = connect 

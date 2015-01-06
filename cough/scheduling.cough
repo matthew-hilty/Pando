@@ -1,0 +1,56 @@
+{ anyPostponement }                 = require './postponement-utilities'
+{ configReschedule }                = require './configure-rescheduling'
+{ createCell, cytolyseAll, isCell } = require './cell-utilities'
+{ isProperty }                      = require './dispatcher-comparisons'
+{ isRelevant }                      = require './constant-comparisons'
+{ none, postpone }                  = require './constants'
+{ noOp }                            = require './utilities'
+{ writePostpone }                   = require './postponement-utilities'
+
+anyPostponedArgs = ([_, args]) ->
+  anyPostponement args
+
+applyFnToCytolysedArgs = (fn, args) ->
+  fn.apply (null, cytolyseAll args)
+
+block_N = (N, fn, args...) ->
+  configReschedule (block_N_Config, N, fn, args)
+
+blockTillReady = (fn) -> (args...) ->
+  block_N (10, fn, args...)
+
+doAsync = (fn) -> (args...) ->
+  endocytate (
+    10
+    ignoreIrrelevant fn
+    sampleProperties args
+    createCell ()
+  )
+
+endocytate = (N, fn, managedArgs, cell) ->
+  config = getEndocytateConfig fn
+  configReschedule (config, N, cell, managedArgs)
+
+getEndocytateConfig = \fn ->
+  onRelease        : (cell, args) ->
+    cell.write (applyFnToCytolysedArgs (fn, args))
+  onReschedule     : writePostpone
+  shouldReschedule : anyPostponedArgs
+
+ignoreIrrelevant = (fn) -> (args...) ->
+  if args.every isRelevant then fn args... else none
+
+sampleProperties = \args ->
+  args.map (\val -> if isProperty val then val.sample () else val)
+
+attempt = block_N.bind (null, 10)
+
+block_N_Config =
+  onRelease        : applyFnToCytolysedArgs
+  shouldReschedule : anyPostponedArgs
+
+module.exports = {
+  attempt
+  blockTillReady
+  doAsync
+}

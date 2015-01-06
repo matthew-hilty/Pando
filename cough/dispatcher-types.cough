@@ -1,0 +1,15 @@
+{ CoreDispatcher, displayDispatcherType } = require './core-types'
+{ extendProto }                           = require './utilities'
+
+extendCoreDispatcher = \type ->
+  inspect = displayDispatcherType type
+  extendProto (CoreDispatcher, { inspect, type })
+
+EventStream = extendCoreDispatcher 'EventStream'
+Property    = extendCoreDispatcher 'Property'
+
+module.exports = {
+  EventStream
+  extendCoreDispatcher
+  Property
+}

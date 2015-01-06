@@ -1,0 +1,146 @@
+{ attempt, blockTillReady, doAsync } = require './scheduling'
+{ isDefined, noOp }                  = require './utilities'
+{ isEnd, isNonTerminal, isRelevant } = require './constant-comparisons'
+
+{ bindBeforeTransmersal
+  bindIdentification
+  functionize
+  sinkIfSinkable
+} = require './transform-utilities'
+
+delaying = (delayDuration) -> (sink) -> (value, sourceID, sid) ->
+  setInterval ((-> sink (value, sourceID, sid)), delayDuration)
+
+filtering = (pred) -> (sink) -> (value, sourceID, sid) ->
+  if isEnd value
+    sink (value, sourceID, sid)
+  else
+    _sink = bindIdentification (sink, sourceID, sid)
+    attempt ((sinkIfSinkable _sink), value, (doAsync pred value))
+
+filteringNonterminal = (sink) -> (value, sourceID, sid) ->
+  sink (value, sourceID, sid) if isNonTerminal value
+
+flattening = \sink ->
+  subscriptions = []
+  unsub = -> subscriptions.forEach \unsubscribe -> unsubscribe ()
+  (dispatcher, sourceID, sid) ->
+    if isEnd dispatcher
+      unsub ()
+      sink (end, sourceID, sid)
+    else
+      subscriptions.push (dispatcher.subscribe sink)
+
+mapping = (arg, args...) ->
+  fn = functionize (arg, args...)
+  (sink) -> (value, sourceID, sid) ->
+    if isEnd value
+      sink (value, sourceID, sid)
+    else
+      _sink = bindIdentification (sink, sourceID, sid)
+      attempt (_sink, (fn value))
+
+mappingEnd = (thunk) -> (sink) -> (value, sourceID, sid) ->
+  _value = if isEnd value then thunk () else value
+  sink (_value, sourceID, sid)
+
+monitoringFirst = \sink ->
+  isAccepting = true
+  unsub = noOp
+  (dispatcher, sourceID, sid) ->
+    if isEnd dispatcher
+      unsub ()
+      sink (end, sourceID, sid)
+    if isAccepting
+      isAccepting = false
+      unsub = dispatcher.subscribe sink
+
+monitoringLatest = \sink ->
+  unsub = noOp
+  (dispatcher, sourceID, sid) ->
+    if isEnd dispatcher
+      unsub ()
+      sink (end, sourceID, sid)
+    else
+      unsub = dispatcher.subscribe sink
+
+permittingOnlyOneValue = (sink) -> (value, sourceID, sid) ->
+  _sink = bindIdentification (sink, sourceID, sid)
+  _sink value
+  _sink end
+
+reducing = \memo \fn \sink ->
+  cachedValue = memo
+  (value, sourceID, sid) ->
+    if isNonTerminal value
+      cachedValue = fn cachedValue value
+    else
+      sink (cachedValue, sourceID, sid)
+
+scanning = \memo \fn \sink ->
+  cachedValue = memo
+  (value, sourceID, sid) ->
+    _sink = bindIdentification (sink, sourceID, sid)
+    if isEnd value
+      _sink value
+    else
+      cachedValue = fn cachedValue value
+      _sink cachedValue
+
+staggering = \offset \sink ->
+  cache    = []
+  isSinking = false
+  (value, sourceID, sid) ->
+    cache.push [value, sourceID, sid]
+    if isSinking
+      args = cache.shift()
+      sink args...
+    else
+      offset    = offset - 1
+      isSinking = offset == 0
+
+stateMachineProcessing = (initialState, fn) -> (sink) ->
+  (value, sourceID, sid) ->
+    state = initialState
+    { newState, newValue } = fn state value
+    state = newState
+    sink (newValue, sourceID, sid)
+
+taking = \nbr \sink ->
+  iteration = nbr
+  (value, sourceID, sid) ->
+    if iteration > 0
+      iteration = iteration - 1
+      sink (value, sourceID, sid)
+    else
+      sink (end, sourceID, sid)
+
+[bfiltering, bfilteringNonterminal, bmapping] =
+  [filtering, filteringNonterminal, mapping].map bindBeforeTransmersal
+
+blocking         = blockTillReady
+filteringDefined = filtering isDefined
+negating         = mapping (\bool -> ! bool)
+
+module.exports = {
+  bfiltering
+  bfilteringNonterminal
+  blocking
+  bmapping
+  delaying
+  filtering
+  filteringDefined
+  filteringNonterminal
+  flattening
+  mapping
+  mappingEnd
+  monitoringFirst
+  monitoringLatest
+  negating
+  permittingOnlyOneValue
+  reducing
+  staggering
+  stateMachineProcessing
+  scanning
+  taking
+}

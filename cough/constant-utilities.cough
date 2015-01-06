@@ -1,0 +1,7 @@
+bracket = \label ->
+  '<' + label + '>'
+
+createSingleton = \label ->
+  { inspect: -> bracket label }
+
+module.exports = { bracket, createSingleton }

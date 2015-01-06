@@ -1,0 +1,7 @@
+{ createSingleton } = require './constant-utilities'
+
+module.exports = {
+  end      : createSingleton 'end'
+  none     : createSingleton 'none'
+  postpone : createSingleton 'postpone'
+}

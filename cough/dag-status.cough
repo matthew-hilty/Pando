@@ -1,0 +1,18 @@
+isInitiatingUpdate = true
+isUpdating         = false
+
+isDagUpdating = ->
+  isUpdating
+
+isInitiatingDagUpdate = ->
+  _isInitiatingUpdate = isInitiatingUpdate
+  isInitiatingUpdate  = false
+  isUpdating          = true
+  _isInitiatingUpdate
+
+resetDagUpdateProcess = ->
+  isUpdating         = false
+  isInitiatingUpdate = true
+
+module.exports =
+  { isDagUpdating, isInitiatingDagUpdate, resetDagUpdateProcess }

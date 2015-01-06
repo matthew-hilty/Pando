@@ -1,0 +1,18 @@
+{ bracket }                 = require './constant-utilities'
+{ extendProto, isFromType } = require './utilities'
+
+display = \supertype \subtype ->
+  -> bracket "#{supertype}: #{subtype}"
+
+createSuperType = (display, typeLabel) ->
+  inspect   : display 'Core'
+  supertype : typeLabel
+  type      : typeLabel
+
+displayCellType       = display 'Cell'
+displayDispatcherType = display 'Dispatcher'
+
+CoreCell       = createSuperType (displayCellType,       'core-cell')
+CoreDispatcher = createSuperType (displayDispatcherType, 'core-dispatcher')
+
+module.exports = { CoreCell, CoreDispatcher, displayDispatcherType }

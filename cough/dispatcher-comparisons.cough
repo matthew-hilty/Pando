@@ -1,0 +1,9 @@
+{ CoreDispatcher }        = require './core-types'
+{ EventStream, Property } = require './dispatcher-types'
+{ isFromType }            = require './utilities'
+
+module.exports = {
+  isDispatcher  : isFromType CoreDispatcher 
+  isEventStream : isFromType EventStream
+  isProperty    : isFromType Property
+}

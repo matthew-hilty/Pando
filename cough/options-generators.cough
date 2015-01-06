@@ -1,0 +1,69 @@
+{ configReschedule }      = require './configure-rescheduling'
+{ createCell }            = require './cell-utilities'
+{ EventStream, Property } = require './dispatcher-types'
+{ extend, noOp }          = require './utilities'
+{ isDagUpdating }         = require './dag-status'
+{ isEnd, isRelevant }     = require './constant-comparisons'
+{ none, postpone }        = require './constants'
+parseOpts                 = require './parseOpts'
+{ writePostpone }         = require './postponement-utilities'
+
+genESOpts = (opts = {}) ->
+  result = parseOpts opts
+  result.proto = EventStream
+  result
+
+genPropOpts = (initialValue) -> (opts = {}) ->
+  { mixins, transformDispatch, transformSubscribe } = parseOpts opts
+
+  cachedValue = initialValue ?? none
+  ended?      = false
+  proto       = Property
+
+  read = -> cachedValue
+  sample = ->
+    sample_N (10, createCell ())
+  sample_N = (N, cell) ->
+    configReschedule ((getSampleConfig read), N, cell)
+  write = \value -> cachedValue = value
+
+  extend (mixins, { read, sample, write })
+
+  pushValueThru = (sink, value) ->
+    if sink.id then sink (value, sink.id, '?1') else sink (value, '?2', '?2')
+
+  immediatelyEnd = \sink ->
+    pushValueThru (sink, end)
+    noOp
+
+  _transformDispatch = (dispatch) -> (value, sourceID, sid) ->
+    if isEnd value
+      ended? = true
+    else
+      write value
+    dispatch (value, sourceID, sid)
+
+  _transformSubscribe = \subscribe \sink ->
+    if isRelevant cachedValue
+      pushValueThru (sink, cachedValue)
+      if ended? then immediatelyEnd sink else subscribe sink
+    else
+      subscribe sink
+
+  mixins             : mixins
+  proto              : proto
+  transformDispatch  : (• transformDispatch _transformDispatch)
+  transformSubscribe : (• transformSubscribe _transformSubscribe)
+
+getSampleConfig = \read ->
+  onRelease        : \cell -> cell.write (read ())
+  onReschedule     : writePostpone
+  shouldReschedule : isDagUpdating
+
+genNonInitPropOpts = genPropOpts none
+
+module.exports = {
+  genESOpts
+  genPropOpts
+  genNonInitPropOpts
+}

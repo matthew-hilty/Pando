@@ -1,0 +1,118 @@
+bind = (fn) -> (args...) ->
+  nativeBind.apply (fn, [null].concat args)
+
+callOnlyOnce = (fn) ->
+  fnProxy = (args...) ->
+    fnProxy = noOp
+    fn args...
+  (args...) -> fnProxy args...
+
+eachProperty = (fn, obj) ->
+  for own key, val of obj
+    fn (val, key)
+
+extend = (obj, mixins...) ->
+  for mixin in mixins
+    for own key, val of mixin
+      obj[key] = val
+  obj
+
+extendProto = (prototype, mixins...) ->
+  clone = Object.create prototype
+  extend (clone, mixins...)
+
+getComponent = (keypath, obj) ->
+  if isAtomicKeypath keypath
+    key = keypath.slice 1
+    shallowCopy obj[key]
+  else
+    [nextKey, nextKeypath] = processKeypath keypath
+    return null unless isHash obj[nextKey]
+    getComponent (nextKeypath, obj[nextKey])
+
+getType = \val ->
+  if isObject val then getPrototypeOf val else nativeToString.call val
+
+identity = \val ->
+  val
+
+isArray = \val ->
+  val instanceof Array
+
+isAtomicKeypath = \keypath ->
+  ! compositeRegex.test keypath
+
+isDefined = \val ->
+  ? val
+
+isEmpty = \obj ->
+  Object.keys(obj).length == 0
+
+isFromType = \type \val ->
+  t = getType val
+  switch
+    when (t == type) then true
+    when not (isHash t) then false
+    when (t == ObjProto) then false
+    else isFromType type t
+
+isFunction = \val ->
+  typeof val == 'function'
+
+isHash = \val ->
+  nativeToString.call val == '[object Object]'
+
+isKeypath = \val ->
+  keypathRegex.test val
+
+isObject = \val ->
+  val == Object val
+
+noOp = (->)
+
+processKeypath = \keypath ->
+  processRegex.exec(keypath).slice(1, 3)
+
+returnNoOp = -> noOp
+
+shallowCopy = \val ->
+  switch
+    when isObject val
+      copy = {}
+      copy[key] = prop for own key, prop of val
+      copy
+    when isArray val
+      val.map identity
+    else
+      val
+
+FuncProto      = Function.prototype
+ObjProto       = Object.prototype
+getPrototypeOf = Object.getPrototypeOf
+nativeBind     = FuncProto.bind
+nativeToString = ObjProto.toString
+compositeRegex = /\.[^\.]*\./
+keypathRegex   = /(\.([^\W]|\$)+)+$/
+processRegex   = /\.([^\.]*)(\.?.*)$/
+
+module.exports = {
+  bind
+  callOnlyOnce
+  eachProperty
+  extend
+  extendProto
+  getType
+  getPrototypeOf
+  identity
+  isArray
+  isDefined
+  isEmpty
+  isFromType
+  isFunction
+  isHash
+  isKeypath
+  isObject
+  nativeBind
+  noOp
+  returnNoOp
+}

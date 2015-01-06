@@ -1,0 +1,29 @@
+createDispatcherType         = require './createDispatcherType'
+{ fromInternalDispatchOnly } = require './source-determiners'
+
+{ genESOpts, genNonInitPropOpts, genPropOpts } =
+  require './options-generators'
+
+createEventStreamBus = ->
+  createEventStream () fromInternalDispatchOnly 
+
+createNonInitPropertyBus = ->
+  createNonInitProperty () fromInternalDispatchOnly
+
+createProperty = \initialValue ->
+  ; createDispatcherType genPropOpts (initialValue) ;
+
+createPropertyBus = \initialValue ->
+  createProperty initialValue () fromInternalDispatchOnly
+
+createEventStream     = ; createDispatcherType genESOpts ;
+createNonInitProperty = ; createDispatcherType genNonInitPropOpts ;
+
+module.exports = {
+  createEventStream
+  createEventStreamBus
+  createNonInitProperty
+  createNonInitPropertyBus
+  createProperty
+  createPropertyBus
+}

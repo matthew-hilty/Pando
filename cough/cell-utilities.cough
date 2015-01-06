@@ -1,0 +1,21 @@
+{ CoreCell }             = require './core-types'
+{ extendProto, getType } = require './utilities'
+
+createCell = \initialValue ->
+  value = initialValue ?? null
+  read = ->
+    value
+  write = \_value ->
+    value = _value
+  extendProto (CoreCell, { read, write })
+
+isCell = \val ->
+  getType val == CoreCell
+
+cytolyse = \val ->
+  if isCell val then cytolyse (val.read ()) else val
+
+cytolyseAll = \args ->
+  args.map cytolyse
+
+module.exports = { createCell, cytolyse, cytolyseAll, isCell }
