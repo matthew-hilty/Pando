@@ -11,11 +11,6 @@
 { isEnd }                = require './constant-comparisons'
 parseOpts                = require './parseOpts'
 
-createDispatcherType = \opts \source ->
-  dispatcher = _createDispatcherType opts source
-  register dispatcher
-  dispatcher
-
 # Later, refactor to use mediator more; & add a method for adding pending srcs.
 # Improve memory efficiency. Many of these methods should be shared.
 # Many of these internal functions can be moved outside of
@@ -23,7 +18,7 @@ createDispatcherType = \opts \source ->
 # (This library should be distributed across several modular files
 # for greater maintainability.)
 # Perhaps memory shouldn't be a determining factor.
-_createDispatcherType = \opts \source ->
+createDispatcherType = \opts \source ->
   { mixins, proto, transformDispatch, transformSubscribe } = parseOpts opts
 
   mixins              ?= {}
@@ -120,8 +115,6 @@ _createDispatcherType = \opts \source ->
     terminate
     unsubscribe }
 
-  # TODO: Perhaps `_createDispatcherType` can be unwrapped. Try the following:
-  # register (extendProto (proto, properties, mixins))
-  extendProto (proto, properties, mixins)
+  register (extendProto (proto, properties, mixins))
 
 module.exports = createDispatcherType
