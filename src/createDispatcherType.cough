@@ -3,13 +3,15 @@
 { callOnlyOnce, eachProperty, extendProto, identity, noOp, returnNoOp } =
   require './utilities'
 
-{ anyPostponement }                = require './postponement-utilities'
-{ configReschedule }               = require './configure-rescheduling'
-{ CoreDispatcher }                 = require './core-types'
-{ cytolyse }                       = require './cell-utilities'
-{ generateID, register, transmit } = require './registrations'
-{ isEnd }                          = require './constant-comparisons'
-parseOpts                          = require './parseOpts'
+{ generateID, register, removeFromRegistrar, transmit } =
+  require './registrations'
+
+{ anyPostponement }  = require './postponement-utilities'
+{ configReschedule } = require './configure-rescheduling'
+{ CoreDispatcher }   = require './core-types'
+{ cytolyse }         = require './cell-utilities'
+{ isEnd }            = require './constant-comparisons'
+parseOpts            = require './parseOpts'
 
 createDispatcherType = \opts \source ->
   { mixins, proto, transformDispatch, transformSubscribe } = parseOpts opts
@@ -26,34 +28,43 @@ createDispatcherType = \opts \source ->
   terminated?        = false
 
   alias = id
+  getAlias = -> alias
   setAlias = \val -> alias = val
 
   activate = callOnlyOnce ->
     stopSourceInflux = callOnlyOnce (source dispatch)
+
   addSubscriber = \sink ->
     sink.id = generateID () unless sink.id
     sinks[sink.id] = sink
+
   disconnectFrom = (sourceID, sid) ->
     subscriptionID = sid ?? id
     transmit (sourceID, 'unsubscribe', subscriptionID) if sourceID
+
   _dispatch = (value, sourceID, subscriptionID) ->
     dispatch_N (10, value, sourceID, subscriptionID)
+
   dispatch_N = (N, value, sourceID, sid) ->
     configReschedule (reschedulingConfig, N, value, sourceID, sid)
+
   distribute = \value ->
     if isEnd value
       terminate ()
     else
       _distrib = \sink ->
-        sink (value, id, (sink.id || 'no-ID'))
+        sink (value, id, sink.id)
       eachProperty (_distrib, sinks)
+
   informSubscribers = ->
     eachProperty ((\sink -> sink end), sinks)
+
   releaseFromRescheduling = (value, sourceID, sid) ->
     if terminated?
       disconnectFrom (sourceID, sid)
     else
       transact ((cytolyse value), sourceID, sid)
+
   _subscribe = \sink ->
     if terminated?
       sink end
@@ -62,12 +73,14 @@ createDispatcherType = \opts \source ->
       addSubscriber sink
       activate ()
       callOnlyOnce -> unsubscribe sink
+
   terminate = ->
     stopSourceInflux ()
     terminated? = true
     informSubscribers ()
     sinks = {}
     removeFromRegistrar id
+
   transact = (value, sourceID, sid) ->
     hasInitiatedDagUpdate = isInitiatingDagUpdate ()
     try
@@ -75,6 +88,7 @@ createDispatcherType = \opts \source ->
       disconnectFrom (sourceID, sid) if terminated?
     finally
       resetDagUpdateProcess () if hasInitiatedDagUpdate
+
   unsubscribe = \val ->
     subscriberID = if isFunction val then val.id else val
     delete sinks[subscriberID]
@@ -89,8 +103,8 @@ createDispatcherType = \opts \source ->
 
   properties = {
     activate
-    alias
     dispatch
+    getAlias
     id
     setAlias
     subscribe
