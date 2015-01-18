@@ -38,10 +38,6 @@ createDispatcherType = \opts \source ->
     sink.id = generateID () unless sink.id
     sinks[sink.id] = sink
 
-  disconnectFrom = (sourceID, sid) ->
-    subscriptionID = sid ?? id
-    transmit (sourceID, 'unsubscribe', subscriptionID) if sourceID
-
   _dispatch = (value, sourceID, subscriptionID) ->
     dispatch_N (10, value, sourceID, subscriptionID)
 
@@ -61,7 +57,7 @@ createDispatcherType = \opts \source ->
 
   releaseFromRescheduling = (value, sourceID, sid) ->
     if terminated?
-      disconnectFrom (sourceID, sid)
+      disconnectFrom (sourceID, sid, id)
     else
       transact ((cytolyse value), sourceID, sid)
 
@@ -85,7 +81,7 @@ createDispatcherType = \opts \source ->
     hasInitiatedDagUpdate = isInitiatingDagUpdate ()
     try
       distribute value
-      disconnectFrom (sourceID, sid) if terminated?
+      disconnectFrom (sourceID, sid, id) if terminated?
     finally
       resetDagUpdateProcess () if hasInitiatedDagUpdate
 
@@ -112,5 +108,9 @@ createDispatcherType = \opts \source ->
     unsubscribe }
 
   register (extendProto (proto, properties, mixins))
+
+disconnectFrom = (sourceID, sid, id) ->
+  subscriptionID = sid ?? id
+  transmit (sourceID, 'unsubscribe', subscriptionID) if sourceID
 
 module.exports = createDispatcherType
