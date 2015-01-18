@@ -8,7 +8,7 @@ register = \entity ->
 removeFromRegistrar = \id ->
   delete entities[id]
 
-transmit = (id) -> (message) -> (args...) ->
+transmit = (id, message, args...) ->
   entities[id][message] args... if entities[id]
 
 entities = {}
