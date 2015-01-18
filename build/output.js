@@ -217,11 +217,13 @@ module.exports = {
 
 
 },{"./constant-utilities":5,"./utilities":23}],8:[function(_dereq_,module,exports){
-var CoreDispatcher, anyPostponement, callOnlyOnce, configReschedule, createDispatcherType, cytolyse, eachProperty, extendProto, generateID, identity, isEnd, isInitiatingDagUpdate, noOp, parseOpts, register, resetDagUpdateProcess, returnNoOp, _createDispatcherType, _ref, _ref1, _ref2;
+var CoreDispatcher, anyPostponement, callOnlyOnce, configReschedule, createDispatcherType, cytolyse, disconnectFrom, eachProperty, extendProto, generateID, identity, isEnd, isInitiatingDagUpdate, noOp, parseOpts, register, removeFromRegistrar, resetDagUpdateProcess, returnNoOp, transmit, _ref, _ref1, _ref2;
 
 _ref = _dereq_('./dag-status'), isInitiatingDagUpdate = _ref.isInitiatingDagUpdate, resetDagUpdateProcess = _ref.resetDagUpdateProcess;
 
 _ref1 = _dereq_('./utilities'), callOnlyOnce = _ref1.callOnlyOnce, eachProperty = _ref1.eachProperty, extendProto = _ref1.extendProto, identity = _ref1.identity, noOp = _ref1.noOp, returnNoOp = _ref1.returnNoOp;
+
+_ref2 = _dereq_('./registrations'), generateID = _ref2.generateID, register = _ref2.register, removeFromRegistrar = _ref2.removeFromRegistrar, transmit = _ref2.transmit;
 
 anyPostponement = _dereq_('./postponement-utilities').anyPostponement;
 
@@ -231,24 +233,13 @@ CoreDispatcher = _dereq_('./core-types').CoreDispatcher;
 
 cytolyse = _dereq_('./cell-utilities').cytolyse;
 
-_ref2 = _dereq_('./registrations'), generateID = _ref2.generateID, register = _ref2.register;
-
 isEnd = _dereq_('./constant-comparisons').isEnd;
 
 parseOpts = _dereq_('./parseOpts');
 
 createDispatcherType = function(opts) {
   return function(source) {
-    var dispatcher;
-    dispatcher = _createDispatcherType(opts)(source);
-    register(dispatcher);
-    return dispatcher;
-  };
-};
-
-_createDispatcherType = function(opts) {
-  return function(source) {
-    var activate, addSubscriber, alias, disconnectFrom, dispatch, dispatch_N, distribute, id, informSubscribers, mixins, properties, proto, releaseFromRescheduling, reschedulingConfig, setAlias, sinks, stopSourceInflux, subscribe, terminate, terminated_question_, transact, transformDispatch, transformSubscribe, unsubscribe, _dispatch, _ref3, _subscribe;
+    var activate, addSubscriber, alias, dispatch, dispatch_N, distribute, getAlias, id, informSubscribers, mixins, properties, proto, releaseFromRescheduling, reschedulingConfig, setAlias, sinks, stopSourceInflux, subscribe, terminate, terminated_question_, transact, transformDispatch, transformSubscribe, unsubscribe, _dispatch, _ref3, _subscribe;
     _ref3 = parseOpts(opts), mixins = _ref3.mixins, proto = _ref3.proto, transformDispatch = _ref3.transformDispatch, transformSubscribe = _ref3.transformSubscribe;
     if (mixins == null) {
       mixins = {};
@@ -270,6 +261,9 @@ _createDispatcherType = function(opts) {
     stopSourceInflux = noOp;
     terminated_question_ = false;
     alias = id;
+    getAlias = function() {
+      return alias;
+    };
     setAlias = function(val) {
       return alias = val;
     };
@@ -281,13 +275,6 @@ _createDispatcherType = function(opts) {
         sink.id = generateID();
       }
       return sinks[sink.id] = sink;
-    };
-    disconnectFrom = function(sourceID, sid) {
-      var subscriptionID;
-      subscriptionID = sid != null ? sid : id;
-      if (sourceID) {
-        return transmit(sourceID)('unsubscribe')(subscriptionID);
-      }
     };
     _dispatch = function(value, sourceID, subscriptionID) {
       return dispatch_N(10, value, sourceID, subscriptionID);
@@ -301,7 +288,7 @@ _createDispatcherType = function(opts) {
         return terminate();
       } else {
         _distrib = function(sink) {
-          return sink(value, id, sink.id || 'no-ID');
+          return sink(value, id, sink.id);
         };
         return eachProperty(_distrib, sinks);
       }
@@ -313,7 +300,7 @@ _createDispatcherType = function(opts) {
     };
     releaseFromRescheduling = function(value, sourceID, sid) {
       if (terminated_question_) {
-        return disconnectFrom(sourceID, sid);
+        return disconnectFrom(sourceID, sid, id);
       } else {
         return transact(cytolyse(value), sourceID, sid);
       }
@@ -343,7 +330,7 @@ _createDispatcherType = function(opts) {
       try {
         distribute(value);
         if (terminated_question_) {
-          return disconnectFrom(sourceID, sid);
+          return disconnectFrom(sourceID, sid, id);
         }
       } finally {
         if (hasInitiatedDagUpdate) {
@@ -367,16 +354,24 @@ _createDispatcherType = function(opts) {
     dispatch.id = id;
     properties = {
       activate: activate,
-      alias: alias,
       dispatch: dispatch,
+      getAlias: getAlias,
       id: id,
       setAlias: setAlias,
       subscribe: subscribe,
       terminate: terminate,
       unsubscribe: unsubscribe
     };
-    return extendProto(proto, properties, mixins);
+    return register(extendProto(proto, properties, mixins));
   };
+};
+
+disconnectFrom = function(sourceID, sid, id) {
+  var subscriptionID;
+  subscriptionID = sid != null ? sid : id;
+  if (sourceID) {
+    return transmit(sourceID, 'unsubscribe', subscriptionID);
+  }
 };
 
 module.exports = createDispatcherType;
@@ -775,16 +770,12 @@ removeFromRegistrar = function(id) {
   return delete entities[id];
 };
 
-transmit = function(id) {
-  return function(message) {
-    return function() {
-      var args, _ref;
-      args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      if (entities[id]) {
-        return (_ref = entities[id])[message].apply(_ref, args);
-      }
-    };
-  };
+transmit = function() {
+  var args, id, message, _ref;
+  id = arguments[0], message = arguments[1], args = 3 <= arguments.length ? __slice.call(arguments, 2) : [];
+  if (entities[id]) {
+    return (_ref = entities[id])[message].apply(_ref, args);
+  }
 };
 
 entities = {};
