@@ -18,10 +18,8 @@ fromArray = \array \sink ->
 
   unsubscribe
 
-# WET.
 fromCallback = (useAsCallback, stopUsingAsCallback) -> (sink) ->
   stopUsingAsCallback ?= returnNoOp
-  # Callbacks don't have a source ID.
   _sink = \val ->
     sink val
     sink end
@@ -63,7 +61,6 @@ fromPoll = \transformSink \delayDuration \sink ->
   pollID = setInterval ((transformSink sink), delayDuration)
   -> clearInterval pollID
 
-# TODO: Consider renaming parameters.
 fromSourceFunction = (subscribe, unsubscribe) -> (sink) ->
   unsubscribe ?= returnNoOp
   subscribe sink
