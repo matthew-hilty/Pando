@@ -1,6 +1,6 @@
 {
   "name": "pando",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "A functional reactive programming library for javascript",
   "main": "js/pando.js",
   "repository": {
