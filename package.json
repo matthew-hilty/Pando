@@ -2,7 +2,7 @@
   "name": "pando",
   "version": "0.0.1",
   "description": "A functional reactive programming library for javascript",
-  "main": "js/pando.js",
+  "main": "lib/index.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/matthew-hilty/Pando.git"
