@@ -1,5 +1,5 @@
 { attempt, blockTillReady, doAsync } = require './scheduling'
-{ isDefined, noOp }                  = require './utilities'
+{ compose, isDefined, noOp }         = require './utilities'
 { isEnd, isNonTerminal, isRelevant } = require './constant-comparisons'
 
 { bindBeforeTransmersal
@@ -7,6 +7,14 @@
   functionize
   sinkIfSinkable
 } = require './transform-utilities'
+
+composing = (fns...) ->
+  (sink) -> (value, sourceID, sid) ->
+    if isEnd value
+      sink (value, sourceID, sid)
+    else
+      _sink = bindIdentification (sink, sourceID, sid)
+      attempt (_sink, compose (fns.concat value))
 
 delaying = (delayDuration) -> (sink) -> (value, sourceID, sid) ->
   setInterval ((-> sink (value, sourceID, sid)), delayDuration)
@@ -127,6 +135,7 @@ module.exports = {
   bfilteringNonterminal
   blocking
   bmapping
+  composing
   delaying
   filtering
   filteringDefined
