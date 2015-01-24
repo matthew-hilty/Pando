@@ -1142,16 +1142,32 @@ module.exports = {
 
 
 },{"./cell-utilities":1,"./constant-comparisons":4,"./constants":6,"./postponement-utilities":16,"./scheduling":18,"./utilities":23}],22:[function(_dereq_,module,exports){
-var attempt, bfiltering, bfilteringNonterminal, bindBeforeTransmersal, bindIdentification, blockTillReady, blocking, bmapping, delaying, doAsync, filtering, filteringDefined, filteringNonterminal, flattening, functionize, isDefined, isEnd, isNonTerminal, isRelevant, mapping, mappingEnd, monitoringFirst, monitoringLatest, negating, noOp, permittingOnlyOneValue, reducing, scanning, sinkIfSinkable, staggering, stateMachineProcessing, taking, _ref, _ref1, _ref2, _ref3, _ref4,
+var attempt, bfiltering, bfilteringNonterminal, bindBeforeTransmersal, bindIdentification, blockTillReady, blocking, bmapping, compose, composing, delaying, doAsync, filtering, filteringDefined, filteringNonterminal, flattening, functionize, isDefined, isEnd, isNonTerminal, isRelevant, mapping, mappingEnd, monitoringFirst, monitoringLatest, negating, noOp, permittingOnlyOneValue, reducing, scanning, sinkIfSinkable, staggering, stateMachineProcessing, taking, _ref, _ref1, _ref2, _ref3, _ref4,
   __slice = [].slice;
 
 _ref = _dereq_('./scheduling'), attempt = _ref.attempt, blockTillReady = _ref.blockTillReady, doAsync = _ref.doAsync;
 
-_ref1 = _dereq_('./utilities'), isDefined = _ref1.isDefined, noOp = _ref1.noOp;
+_ref1 = _dereq_('./utilities'), compose = _ref1.compose, isDefined = _ref1.isDefined, noOp = _ref1.noOp;
 
 _ref2 = _dereq_('./constant-comparisons'), isEnd = _ref2.isEnd, isNonTerminal = _ref2.isNonTerminal, isRelevant = _ref2.isRelevant;
 
 _ref3 = _dereq_('./transform-utilities'), bindBeforeTransmersal = _ref3.bindBeforeTransmersal, bindIdentification = _ref3.bindIdentification, functionize = _ref3.functionize, sinkIfSinkable = _ref3.sinkIfSinkable;
+
+composing = function() {
+  var fns;
+  fns = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+  return function(sink) {
+    return function(value, sourceID, sid) {
+      var _sink;
+      if (isEnd(value)) {
+        return sink(value, sourceID, sid);
+      } else {
+        _sink = bindIdentification(sink, sourceID, sid);
+        return attempt(_sink, compose(fns.concat(value)));
+      }
+    };
+  };
+};
 
 delaying = function(delayDuration) {
   return function(sink) {
@@ -1364,6 +1380,7 @@ module.exports = {
   bfilteringNonterminal: bfilteringNonterminal,
   blocking: blocking,
   bmapping: bmapping,
+  composing: composing,
   delaying: delaying,
   filtering: filtering,
   filteringDefined: filteringDefined,
@@ -1385,7 +1402,7 @@ module.exports = {
 
 
 },{"./constant-comparisons":4,"./scheduling":18,"./transform-utilities":21,"./utilities":23}],23:[function(_dereq_,module,exports){
-var FuncProto, ObjProto, bind, callOnlyOnce, compositeRegex, eachProperty, extend, extendProto, getComponent, getPrototypeOf, getType, identity, isArray, isAtomicKeypath, isDefined, isEmpty, isFromType, isFunction, isHash, isKeypath, isObject, keypathRegex, nativeBind, nativeToString, noOp, processKeypath, processRegex, returnNoOp, shallowCopy,
+var FuncProto, ObjProto, bind, callOnlyOnce, compose, compositeRegex, eachProperty, extend, extendProto, getComponent, getPrototypeOf, getType, identity, isArray, isAtomicKeypath, isDefined, isEmpty, isFromType, isFunction, isHash, isKeypath, isObject, keypathRegex, nativeBind, nativeToString, noOp, processKeypath, processRegex, returnNoOp, shallowCopy,
   __slice = [].slice,
   __hasProp = {}.hasOwnProperty;
 
@@ -1410,6 +1427,16 @@ callOnlyOnce = function(fn) {
     args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
     return fnProxy.apply(null, args);
   };
+};
+
+compose = function(fns) {
+  return fns.reduceRight(function(composedFn, fn) {
+    return function() {
+      var args;
+      args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      return fn(composedFn.apply(null, args));
+    };
+  });
 };
 
 eachProperty = function(fn, obj) {
@@ -1566,6 +1593,7 @@ processRegex = /\.([^\.]*)(\.?.*)$/;
 module.exports = {
   bind: bind,
   callOnlyOnce: callOnlyOnce,
+  compose: compose,
   eachProperty: eachProperty,
   extend: extend,
   extendProto: extendProto,
