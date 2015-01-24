@@ -7,6 +7,9 @@ callOnlyOnce = (fn) ->
     fn args...
   (args...) -> fnProxy args...
 
+compose = \fns ->
+  fns.reduceRight ((composedFn, fn) -> (args...) -> fn (composedFn args...))
+
 eachProperty = (fn, obj) ->
   for own key, val of obj
     fn (val, key)
@@ -98,6 +101,7 @@ processRegex   = /\.([^\.]*)(\.?.*)$/
 module.exports = {
   bind
   callOnlyOnce
+  compose
   eachProperty
   extend
   extendProto
